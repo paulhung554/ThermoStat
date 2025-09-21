@@ -9,7 +9,7 @@
   <p id="temp">Loading...</p>
 
   <script>
-    fetch("https://your-temp-api.onrender.com/temperature")
+    fetch("https://temperature-server.onrender.com/temperature")
       .then(res => res.json())
       .then(data => {
         document.getElementById('temp').innerText =
