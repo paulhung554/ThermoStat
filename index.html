@@ -1,0 +1,23 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Room Temperature Status</title>
+</head>
+<body>
+  <h1>🌡️ Room Temperature</h1>
+  <p id="temp">Loading...</p>
+
+  <script>
+    fetch("https://your-temp-api.onrender.com/temperature")
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('temp').innerText =
+          `Current temperature: ${data.temperature} °C`;
+      })
+      .catch(err => {
+        document.getElementById('temp').innerText = "Error fetching data.";
+      });
+  </script>
+</body>
+</html>
