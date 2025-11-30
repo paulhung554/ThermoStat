@@ -9,15 +9,23 @@
   <p id="temp">Loading...</p>
 
   <script>
-    fetch("https://temperature-server.onrender.com/temperature")
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('temp').innerText =
-          `Current temperature: ${data.temperature} °C`;
-      })
-      .catch(err => {
-        document.getElementById('temp').innerText = "Error fetching data.";
-      });
+    function fetchTemperature() {
+      fetch("https://temperature-server.onrender.com/temperature")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('temp').innerText =
+            `Current temperature: ${data.temperature} °C`;
+        })
+        .catch(err => {
+          document.getElementById('temp').innerText = "Error fetching data.";
+        });
+    }
+
+    // Fetch immediately on page load
+    fetchTemperature();
+
+    // Auto-refresh every 5 seconds
+    setInterval(fetchTemperature, 5000);
   </script>
 </body>
 </html>
