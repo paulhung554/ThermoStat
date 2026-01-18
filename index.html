@@ -6,15 +6,46 @@
 </head>
 <body>
   <h1>🌡️ Room Temperature</h1>
+  
+  <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+    <label for="setpoint">Temperature Setpoint (°C):</label>
+    <input type="number" id="setpoint" placeholder="Enter desired temperature" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+    <button onclick="setTemperatureSetpoint()" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set</button>
+  </div>
+
   <p id="temp">Loading...</p>
+  <p id="warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than setpoint!</p>
 
   <script>
+    let temperatureSetpoint = localStorage.getItem('temperatureSetpoint') || 25;
+
+    function setTemperatureSetpoint() {
+      const input = document.getElementById('setpoint').value;
+      if (input === '') {
+        alert('Please enter a temperature setpoint');
+        return;
+      }
+      temperatureSetpoint = parseFloat(input);
+      localStorage.setItem('temperatureSetpoint', temperatureSetpoint);
+      document.getElementById('setpoint').value = '';
+      alert(`Temperature setpoint set to ${temperatureSetpoint}°C`);
+    }
+
     function fetchTemperature() {
       fetch("https://temperature-server.onrender.com/temperature")
         .then(res => res.json())
         .then(data => {
+          const currentTemp = data.temperature;
           document.getElementById('temp').innerText =
-            `Current temperature: ${data.temperature} °C`;
+            `Current temperature: ${currentTemp} °C | Setpoint: ${temperatureSetpoint}°C`;
+          
+          // Check if current temperature is greater than setpoint
+          const warningElement = document.getElementById('warning');
+          if (currentTemp > temperatureSetpoint) {
+            warningElement.style.display = 'block';
+          } else {
+            warningElement.style.display = 'none';
+          }
         })
         .catch(err => {
           document.getElementById('temp').innerText = "Error fetching data.";
@@ -26,6 +57,11 @@
 
     // Auto-refresh every 5 seconds
     setInterval(fetchTemperature, 5000);
+
+    // Display the stored setpoint on page load
+    window.onload = function() {
+      document.getElementById('setpoint').placeholder = `Current setpoint: ${temperatureSetpoint}°C`;
+    };
   </script>
 </body>
 </html>
