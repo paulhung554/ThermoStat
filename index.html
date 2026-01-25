@@ -43,12 +43,34 @@
           const warningElement = document.getElementById('warning');
           if (currentTemp > temperatureSetpoint) {
             warningElement.style.display = 'block';
+            // Send alert to backend
+            sendTemperatureAlert(currentTemp, temperatureSetpoint);
           } else {
             warningElement.style.display = 'none';
           }
         })
         .catch(err => {
           document.getElementById('temp').innerText = "Error fetching data.";
+        });
+    }
+
+    function sendTemperatureAlert(currentTemp, setpoint) {
+      fetch("https://temperature-server.onrender.com/temperature/alert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          current_temperature: currentTemp,
+          threshold_temperature: setpoint
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          console.log("Alert response:", data);
+        })
+        .catch(err => {
+          console.error("Error sending alert:", err);
         });
     }
 
