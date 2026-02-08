@@ -39,12 +39,28 @@
 
     function fetchTemperature() {
       fetch("https://temperature-server.onrender.com/temperature")
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) throw new Error('Network response not ok: ' + res.status);
+          const ct = res.headers.get('content-type') || '';
+          if (ct.includes('application/json')) return res.json();
+          // fallback: try to read as text and parse
+          return res.text().then(text => {
+            try {
+              return JSON.parse(text);
+            } catch (e) {
+              const num = parseFloat(text);
+              if (!isNaN(num)) return { temperature: num };
+              // give helpful error for debugging
+              throw new Error('Unparseable response: ' + text.slice(0, 200));
+            }
+          });
+        })
         .then(data => {
+          console.log('temperature response', data);
           const currentTemp = data.temperature;
           document.getElementById('temp').innerText =
             `Current temperature: ${currentTemp} °C | Setpoint: ${temperatureSetpoint}°C`;
-          
+
           // Check if current temperature is greater than setpoint
           const warningElement = document.getElementById('warning');
           const isAbove = parseFloat(currentTemp) > parseFloat(temperatureSetpoint);
@@ -62,6 +78,7 @@
           }
         })
         .catch(err => {
+          console.error('fetchTemperature error:', err);
           document.getElementById('temp').innerText = "Error fetching data.";
         });
     }
