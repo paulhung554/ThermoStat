@@ -5,8 +5,8 @@
   <title>Room Temperature Status</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    #map { height: 560px; width: 100%; }
-    .quake-dot { filter: drop-shadow(0 0 6px rgba(255, 90, 90, 0.9)); }
+    /* Map is hidden by default; shown only when temperature > setpoint */
+    #map { height: 560px; width: 100%; display: none; }
     .leaflet-popup-content-wrapper { border-radius: 12px; background: #fffaf5; }
   </style>
 </head>
@@ -47,12 +47,18 @@
           
           // Check if current temperature is greater than setpoint
           const warningElement = document.getElementById('warning');
-          if (currentTemp > temperatureSetpoint) {
+          const isAbove = parseFloat(currentTemp) > parseFloat(temperatureSetpoint);
+          if (isAbove) {
             warningElement.style.display = 'block';
+            // Show map and update Toronto marker
+            showMapIfNeeded();
+            updateTorontoMarker(true);
             // Send alert to backend
             sendTemperatureAlert(currentTemp, temperatureSetpoint);
           } else {
             warningElement.style.display = 'none';
+            updateTorontoMarker(false);
+            hideMap();
           }
         })
         .catch(err => {
@@ -95,8 +101,8 @@
 
   <!-- Inlined Canada map -->
   <section style="margin-top: 30px;">
-    <h2>🗺️ Canada Map (Earthquakes)</h2>
-    <p style="margin-top:0; margin-bottom:8px; color:#555;">Interactive map embedded below. If the map does not load, open in a new tab.</p>
+    <h2>🗺️ Canada Map (Toronto alert)</h2>
+    <p style="margin-top:0; margin-bottom:8px; color:#555;">Map displays only when current temperature exceeds the setpoint.</p>
     <div style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
       <div id="map"></div>
     </div>
@@ -109,57 +115,92 @@
     let torontoMarker = null;
     function initMap() {
       const map = L.map('map', { zoomControl: false }).setView([56, -96], 4);
+      // store global reference for later marker operations
+      window.__leafletMap = map;
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
         attribution: '© OpenStreetMap, © CARTO'
       }).addTo(map);
 
-      // Toronto marker (will change color when temp > setpoint)
-      torontoMarker = L.circleMarker([43.6532, -79.3832], {
-        radius: 12,
-        fillColor: '#2b8cbe',
-        color: '#ffffff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      }).addTo(map).bindPopup('<strong>Toronto</strong>');
-
-      // Earthquake dots (kept from canada_map.html)
-      fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson')
-        .then(res => res.json())
-        .then(data => {
-          data.features.forEach(eq => {
-            const [lng, lat] = eq.geometry.coordinates;
-            const mag = eq.properties.mag || 0;
-            if (mag < 1) return;
-            let color = '#ffb703';
-            if (mag >= 4) color = '#fb8500';
-            if (mag >= 6) color = '#e63946';
-            const dot = L.circleMarker([lat, lng], {
-              radius: mag * 3 + 4,
-              fillColor: color,
-              color: '#ffffff',
-              weight: 2,
-              opacity: 1,
-              fillOpacity: 0.9,
-              className: 'quake-dot'
-            });
-            dot.bindPopup(`\n              <strong>🌋 Earthquake</strong><br/>\n              Magnitude: ${mag}<br/>\n              ${eq.properties.place}\n            `);
-            dot.addTo(map);
-          });
-        });
+        // Toronto marker will be created lazily when needed
+        torontoMarker = null;
     }
 
-    // Helper to update Toronto marker color based on setpoint/comparison
+    // Helper to update Toronto marker: blink yellow for 1s when `isAbove` true
     function updateTorontoMarker(isAbove) {
-      if (!torontoMarker) return;
-      torontoMarker.setStyle({ fillColor: isAbove ? '#e63946' : '#2b8cbe' });
-      if (isAbove) {
-        torontoMarker.openPopup();
+      // If below threshold, remove marker from map (if present)
+      if (!isAbove) {
+        if (torontoMarker && torontoMarker.remove) {
+          torontoMarker.remove();
+          torontoMarker = null;
+        }
+        return;
+      }
+
+      // Above threshold: ensure map and marker exist
+      showMapIfNeeded();
+      if (!torontoMarker) {
+        torontoMarker = L.circleMarker([43.6532, -79.3832], {
+          radius: 12,
+          fillColor: '#ffd43b', // start yellow for blink
+          color: '#ffffff',
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.9
+        }).addTo(window.__leafletMap).bindPopup('<strong>Toronto</strong>');
+      }
+
+      // Blink: toggle visibility every 200ms for 1 second, then set to red
+      let blinkCount = 0;
+      const maxBlinks = 5; // 5 toggles == ~1s (200ms each)
+      const originalFill = '#e63946';
+      const blinkColor = '#ffd43b';
+
+      const blinkInterval = setInterval(() => {
+        if (!torontoMarker) {
+          clearInterval(blinkInterval);
+          return;
+        }
+        const visible = (blinkCount % 2) === 0;
+        torontoMarker.setStyle({ fillColor: visible ? blinkColor : '#ffffff', fillOpacity: visible ? 0.9 : 0.0 });
+        blinkCount += 1;
+        if (blinkCount >= maxBlinks) {
+          clearInterval(blinkInterval);
+          // Final state: solid red and open popup
+          if (torontoMarker) {
+            torontoMarker.setStyle({ fillColor: originalFill, fillOpacity: 0.9 });
+            torontoMarker.openPopup();
+          }
+        }
+      }, 200);
+    }
+
+    // Show/hide map container (initialize map on first show)
+    let mapInitialized = false;
+    function showMapIfNeeded() {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      if (!mapInitialized) {
+        mapEl.style.display = 'block';
+        initMap();
+        mapInitialized = true;
       } else {
-        torontoMarker.closePopup();
+        mapEl.style.display = 'block';
       }
     }
+
+    function hideMap() {
+      const mapEl = document.getElementById('map');
+      if (mapEl) mapEl.style.display = 'none';
+      // Also remove marker if present
+      if (torontoMarker && torontoMarker.remove) {
+        torontoMarker.remove();
+        torontoMarker = null;
+      }
+    }
+
+    // Keep a global reference to the Leaflet map for marker creation
+    // assigned in initMap
   </script>
 </body>
 </html>
