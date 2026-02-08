@@ -109,10 +109,9 @@
     // Auto-refresh every 5 seconds
     setInterval(fetchTemperature, 5000);
 
-    // Display the stored setpoint on page load and initialize map
+    // Display the stored setpoint on page load (map initializes lazily)
     window.onload = function() {
       document.getElementById('setpoint').placeholder = `Current setpoint: ${temperatureSetpoint}°C`;
-      if (typeof initMap === 'function') initMap();
     };
   </script>
 
@@ -131,6 +130,9 @@
     // Initialize map and Toronto marker; called on window.onload
     let torontoMarker = null;
     function initMap() {
+      // If map already exists, do nothing (prevents double-initialize error)
+      if (window.__leafletMap) return;
+
       const map = L.map('map', { zoomControl: false }).setView([56, -96], 4);
       // store global reference for later marker operations
       window.__leafletMap = map;
