@@ -5,8 +5,8 @@
   <title>Room Temperature Status</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    /* Map is hidden by default; shown only when temperature > setpoint */
-    #map { height: 560px; width: 100%; display: none; }
+    /* Map is always visible */
+    #map { height: 560px; width: 100%; display: block; }
     .leaflet-popup-content-wrapper { border-radius: 12px; background: #fffaf5; }
   </style>
 </head>
@@ -109,9 +109,10 @@
     // Auto-refresh every 5 seconds
     setInterval(fetchTemperature, 5000);
 
-    // Display the stored setpoint on page load (map initializes lazily)
+    // Display the stored setpoint on page load and initialize the map (map always visible)
     window.onload = function() {
       document.getElementById('setpoint').placeholder = `Current setpoint: ${temperatureSetpoint}°C`;
+      if (typeof initMap === 'function') initMap();
     };
   </script>
 
@@ -198,25 +199,20 @@
     let mapInitialized = false;
     function showMapIfNeeded() {
       const mapEl = document.getElementById('map');
-      if (!mapEl) return;
-      if (!mapInitialized) {
-        mapEl.style.display = 'block';
-        initMap();
-        mapInitialized = true;
-      } else {
-        mapEl.style.display = 'block';
-      }
+        if (!mapEl) return;
+        if (!mapInitialized) {
+          initMap();
+          mapInitialized = true;
+        }
     }
 
-    function hideMap() {
-      const mapEl = document.getElementById('map');
-      if (mapEl) mapEl.style.display = 'none';
-      // Also remove marker if present
-      if (torontoMarker && torontoMarker.remove) {
-        torontoMarker.remove();
-        torontoMarker = null;
+      function hideMap() {
+        // Per requirement: do not hide the map. Only remove marker if present.
+        if (torontoMarker && torontoMarker.remove) {
+          torontoMarker.remove();
+          torontoMarker = null;
+        }
       }
-    }
 
     // Keep a global reference to the Leaflet map for marker creation
     // assigned in initMap
