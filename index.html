@@ -21,6 +21,7 @@
 
   <p id="temp">Loading...</p>
   <p id="warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than setpoint!</p>
+  <p id="plc-source" style="margin: 10px 0; font-weight: bold; color: #0066cc;">PLC Source: Unknown</p>
 
   <script>
     let temperatureSetpoint = localStorage.getItem('temperatureSetpoint') || 25;
@@ -61,20 +62,23 @@
           document.getElementById('temp').innerText =
             `Current temperature: ${currentTemp} °C | Setpoint: ${temperatureSetpoint}°C`;
 
+          // Extract PLC source and display it
+          const plcSource = data.plc || 'Unknown';
+          document.getElementById('plc-source').innerText = `PLC Source: ${plcSource}`;
+
           // Check if current temperature is greater than setpoint
           const warningElement = document.getElementById('warning');
           const isAbove = parseFloat(currentTemp) > parseFloat(temperatureSetpoint);
           if (isAbove) {
             warningElement.style.display = 'block';
-            // Show map and update Toronto marker
+            // Show map and update appropriate marker
             showMapIfNeeded();
-            updateTorontoMarker(true);
+            updateMarkers(plcSource, true);
             // Send alert to backend
             sendTemperatureAlert(currentTemp, temperatureSetpoint);
           } else {
             warningElement.style.display = 'none';
-            updateTorontoMarker(false);
-            hideMap();
+            updateMarkers(plcSource, false);
           }
         })
         .catch(err => {
@@ -118,8 +122,8 @@
 
   <!-- Inlined Canada map -->
   <section style="margin-top: 30px;">
-    <h2>🗺️ Canada Map (Toronto alert)</h2>
-    <p style="margin-top:0; margin-bottom:8px; color:#555;">Map displays only when current temperature exceeds the setpoint.</p>
+    <h2>🗺️ Canada Map (PLC Monitoring)</h2>
+    <p style="margin-top:0; margin-bottom:8px; color:#555;">Map displays PLC1 (Toronto) and PLC2 (Vancouver) temperature alerts.</p>
     <div style="border:1px solid #ddd; border-radius:6px; overflow:hidden;">
       <div id="map"></div>
     </div>
@@ -130,6 +134,8 @@
   <script>
     // Initialize map and Toronto marker; called on window.onload
     let torontoMarker = null;
+      let vancouverMarker = null;
+    
     function initMap() {
       // If map already exists, do nothing (prevents double-initialize error)
       if (window.__leafletMap) return;
@@ -142,32 +148,75 @@
         attribution: '© OpenStreetMap, © CARTO'
       }).addTo(map);
 
-        // Toronto marker will be created lazily when needed
+        // Markers will be created lazily when needed
         torontoMarker = null;
+      vancouverMarker = null;
     }
 
-    // Helper to update Toronto marker: blink yellow for 1s when `isAbove` true
+    // Legacy function - maintained for compatibility
     function updateTorontoMarker(isAbove) {
+      // Maintained for backwards compatibility
+    }
+    
+    // Helper to update markers based on PLC: blink yellow for 1s when `isAbove` true
+    function updateMarkers(plcSource, isAbove) {
       // If below threshold, remove marker from map (if present)
       if (!isAbove) {
-        if (torontoMarker && torontoMarker.remove) {
-          torontoMarker.remove();
-          torontoMarker = null;
+        if (plcSource === 'PLC1' || plcSource === 'plc1') {
+          if (torontoMarker && torontoMarker.remove) {
+            torontoMarker.remove();
+            torontoMarker = null;
+          }
+        } else if (plcSource === 'PLC2' || plcSource === 'plc2') {
+          if (vancouverMarker && vancouverMarker.remove) {
+            vancouverMarker.remove();
+            vancouverMarker = null;
+          }
         }
         return;
       }
 
       // Above threshold: ensure map and marker exist
       showMapIfNeeded();
-      if (!torontoMarker) {
-        torontoMarker = L.circleMarker([43.6532, -79.3832], {
+      
+      if (plcSource === 'PLC1' || plcSource === 'plc1') {
+        blinkMarker('toronto');
+      } else if (plcSource === 'PLC2' || plcSource === 'plc2') {
+        blinkMarker('vancouver');
+      }
+    }
+    
+    // Helper function to create and blink a marker
+    function blinkMarker(location) {
+      let marker = null;
+      let coords = null;
+      let title = null;
+      
+      if (location === 'toronto') {
+        marker = torontoMarker;
+        coords = [43.6532, -79.3832];
+        title = 'Toronto (PLC1)';
+      } else if (location === 'vancouver') {
+        marker = vancouverMarker;
+        coords = [49.2827, -123.1207];
+        title = 'Vancouver (PLC2)';
+      }
+      
+      if (!marker) {
+        marker = L.circleMarker(coords, {
           radius: 12,
           fillColor: '#ffd43b', // start yellow for blink
           color: '#ffffff',
           weight: 2,
           opacity: 1,
           fillOpacity: 0.9
-        }).addTo(window.__leafletMap).bindPopup('<strong>Toronto</strong>');
+        }).addTo(window.__leafletMap).bindPopup(`<strong>${title}</strong>`);
+        
+        if (location === 'toronto') {
+          torontoMarker = marker;
+        } else if (location === 'vancouver') {
+          vancouverMarker = marker;
+        }
       }
 
       // Blink: toggle visibility every 200ms for 1 second, then set to red
@@ -177,19 +226,19 @@
       const blinkColor = '#ffd43b';
 
       const blinkInterval = setInterval(() => {
-        if (!torontoMarker) {
+        if (!marker) {
           clearInterval(blinkInterval);
           return;
         }
         const visible = (blinkCount % 2) === 0;
-        torontoMarker.setStyle({ fillColor: visible ? blinkColor : '#ffffff', fillOpacity: visible ? 0.9 : 0.0 });
+        marker.setStyle({ fillColor: visible ? blinkColor : '#ffffff', fillOpacity: visible ? 0.9 : 0.0 });
         blinkCount += 1;
         if (blinkCount >= maxBlinks) {
           clearInterval(blinkInterval);
           // Final state: solid red and open popup
-          if (torontoMarker) {
-            torontoMarker.setStyle({ fillColor: originalFill, fillOpacity: 0.9 });
-            torontoMarker.openPopup();
+          if (marker) {
+            marker.setStyle({ fillColor: originalFill, fillOpacity: 0.9 });
+            marker.openPopup();
           }
         }
       }, 200);
@@ -208,6 +257,10 @@
 
       function hideMap() {
         // Per requirement: do not hide the map. Only remove marker if present.
+                if (vancouverMarker && vancouverMarker.remove) {
+                  vancouverMarker.remove();
+                  vancouverMarker = null;
+                }
         if (torontoMarker && torontoMarker.remove) {
           torontoMarker.remove();
           torontoMarker = null;
