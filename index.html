@@ -31,6 +31,9 @@
       <input type="number" id="plc1-threshold" placeholder="Enter threshold" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
       <button onclick="setPLCThreshold('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Threshold</button>
     </div>
+    <div style="margin-bottom: 10px;">
+      <button onclick="readPLCTemperature('PLC1')" style="padding: 5px 15px; cursor: pointer;">Read Current Temperature</button>
+    </div>
     <p id="plc1-temp">Current: Loading PLC1 data...</p>
     <p id="plc1-warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than threshold!</p>
   </div>
@@ -243,6 +246,31 @@
       }
     }
 
+    function readPLCTemperature(plc) {
+      const plcId = plc.toLowerCase();
+      fetch("https://temperature-server.onrender.com/read-plc/" + plcId, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(`${plc} read response:`, data);
+        if (data.status === "success") {
+          // Refresh the display with the newly read data
+          fetchPLCData();
+          alert(`${plc} temperature read successfully: ${data.data.temperature}°C`);
+        } else {
+          alert(`Error reading ${plc} temperature: ${data.message}`);
+        }
+      })
+      .catch(err => {
+        console.error(`Error reading ${plc} temperature:`, err);
+        alert(`Error reading ${plc} temperature`);
+      });
+    }
+
     function sendTemperatureAlert(currentTemp, setpoint, plc) {
       fetch("https://temperature-server.onrender.com/temperature/alert", {
         method: "POST",
@@ -260,7 +288,7 @@
       })
       .catch(err => {
         console.error(`Error sending ${plc} alert:`, err);
-    }
+      });
 
     // Fetch immediately on page load
     fetchPLCData();
