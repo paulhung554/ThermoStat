@@ -13,81 +13,237 @@
 <body>
   <h1>🌡️ Room Temperature</h1>
   
-  <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
-    <label for="setpoint">Temperature Setpoint (°C):</label>
-    <input type="number" id="setpoint" placeholder="Enter desired temperature" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
-    <button onclick="setTemperatureSetpoint()" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set</button>
+  <!-- PLC1 Section -->
+  <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+    <h2>PLC1 (Toronto)</h2>
+    <div style="margin-bottom: 10px;">
+      <label for="plc1-actual-temp">Actual Temperature (°C):</label>
+      <input type="number" id="plc1-actual-temp" placeholder="Enter actual temperature" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCActualTemp('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Actual Temp</button>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label for="plc1-setpoint">Setpoint (°C):</label>
+      <input type="number" id="plc1-setpoint" placeholder="Enter setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCSetpoint('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label for="plc1-threshold">Threshold (°C):</label>
+      <input type="number" id="plc1-threshold" placeholder="Enter threshold" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCThreshold('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Threshold</button>
+    </div>
+    <p id="plc1-temp">Current: Loading PLC1 data...</p>
+    <p id="plc1-warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than threshold!</p>
   </div>
 
-  <p id="temp">Loading...</p>
-  <p id="warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than setpoint!</p>
-  <p id="plc-source" style="margin: 10px 0; font-weight: bold; color: #0066cc;">PLC Source: Unknown</p>
+  <!-- PLC2 Section -->
+  <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f9f9f9;">
+    <h2>PLC2 (Vancouver)</h2>
+    <div style="margin-bottom: 10px;">
+      <label for="plc2-actual-temp">Actual Temperature (°C):</label>
+      <input type="number" id="plc2-actual-temp" placeholder="Enter actual temperature" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCActualTemp('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Actual Temp</button>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label for="plc2-setpoint">Setpoint (°C):</label>
+      <input type="number" id="plc2-setpoint" placeholder="Enter setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCSetpoint('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
+    </div>
+    <div style="margin-bottom: 10px;">
+      <label for="plc2-threshold">Threshold (°C):</label>
+      <input type="number" id="plc2-threshold" placeholder="Enter threshold" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
+      <button onclick="setPLCThreshold('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Threshold</button>
+    </div>
+    <p id="plc2-temp">Current: Loading PLC2 data...</p>
+    <p id="plc2-warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than threshold!</p>
+  </div>
+
+  <!-- Setpoint Controls -->
+  <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+    <h3>Set Temperature Setpoints</h3>
+    <div style="margin-bottom: 10px;">
+      <label for="setpoint-plc1">PLC1 Setpoint (°C):</label>
+      <input type="number" id="setpoint-plc1" placeholder="Enter PLC1 setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 120px;">
+      <button onclick="setPLCSetpoint('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC1</button>
+    </div>
+    <div>
+      <label for="setpoint-plc2">PLC2 Setpoint (°C):</label>
+      <input type="number" id="setpoint-plc2" placeholder="Enter PLC2 setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 120px;">
+      <button onclick="setPLCSetpoint('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC2</button>
+    </div>
+  </div>
 
   <script>
-    let temperatureSetpoint = localStorage.getItem('temperatureSetpoint') || 25;
-
-    function setTemperatureSetpoint() {
-      const input = document.getElementById('setpoint').value;
-      if (input === '') {
-        alert('Please enter a temperature setpoint');
+    function setPLCActualTemp(plc) {
+      const inputId = plc === 'PLC1' ? 'plc1-actual-temp' : 'plc2-actual-temp';
+      const input = document.getElementById(inputId);
+      const temp = parseFloat(input.value);
+      
+      if (isNaN(temp)) {
+        alert(`Please enter a valid temperature for ${plc}`);
         return;
       }
-      temperatureSetpoint = parseFloat(input);
-      localStorage.setItem('temperatureSetpoint', temperatureSetpoint);
-      document.getElementById('setpoint').value = '';
-      alert(`Temperature setpoint set to ${temperatureSetpoint}°C`);
+      
+      // Send actual temperature to backend
+      fetch("https://temperature-server.onrender.com/temperature/manual/" + plc.toLowerCase(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          temperature: temp
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(`${plc} actual temperature response:`, data);
+        if (data.status === "success") {
+          alert(`${plc} actual temperature set to ${temp}°C`);
+          input.value = '';
+          // Refresh data to show updated temperature
+          fetchPLCData();
+        } else {
+          alert(`Error setting ${plc} actual temperature: ${data.message}`);
+        }
+      })
+      .catch(err => {
+        console.error(`Error setting ${plc} actual temperature:`, err);
+        alert(`Error setting ${plc} actual temperature`);
+      });
     }
 
-    function fetchTemperature() {
-      fetch("https://temperature-server.onrender.com/temperature")
+    function setPLCThreshold(plc) {
+      const inputId = plc === 'PLC1' ? 'plc1-threshold' : 'plc2-threshold';
+      const input = document.getElementById(inputId);
+      const threshold = parseFloat(input.value);
+      
+      if (isNaN(threshold)) {
+        alert(`Please enter a valid threshold for ${plc}`);
+        return;
+      }
+      
+      // Send threshold to backend
+      fetch("https://temperature-server.onrender.com/threshold/" + plc.toLowerCase(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          threshold: threshold
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(`${plc} threshold response:`, data);
+        if (data.status === "success") {
+          alert(`${plc} threshold set to ${threshold}°C`);
+          input.value = '';
+          // Refresh data to show updated threshold
+          fetchPLCData();
+        } else {
+          alert(`Error setting ${plc} threshold: ${data.message}`);
+        }
+      })
+      .catch(err => {
+        console.error(`Error setting ${plc} threshold:`, err);
+        alert(`Error setting ${plc} threshold`);
+      });
+    }
+
+    function setPLCSetpoint(plc) {
+      const inputId = plc === 'PLC1' ? 'plc1-setpoint' : 'plc2-setpoint';
+      const input = document.getElementById(inputId);
+      const setpoint = parseFloat(input.value);
+      
+      if (isNaN(setpoint)) {
+        alert(`Please enter a valid setpoint for ${plc}`);
+        return;
+      }
+      
+      // Send setpoint to backend
+      fetch("https://temperature-server.onrender.com/setpoint/" + plc.toLowerCase(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          setpoint: setpoint
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log(`${plc} setpoint response:`, data);
+        if (data.status === "success") {
+          alert(`${plc} setpoint set to ${setpoint}°C`);
+          input.value = '';
+          // Refresh data to show updated setpoint
+          fetchPLCData();
+        } else {
+          alert(`Error setting ${plc} setpoint: ${data.message}`);
+        }
+      })
+      .catch(err => {
+        console.error(`Error setting ${plc} setpoint:`, err);
+        alert(`Error setting ${plc} setpoint`);
+      });
+    }
+
+    function fetchPLCData() {
+      fetch("https://temperature-server.onrender.com/plc-data")
         .then(res => {
           if (!res.ok) throw new Error('Network response not ok: ' + res.status);
-          const ct = res.headers.get('content-type') || '';
-          if (ct.includes('application/json')) return res.json();
-          // fallback: try to read as text and parse
-          return res.text().then(text => {
-            try {
-              return JSON.parse(text);
-            } catch (e) {
-              const num = parseFloat(text);
-              if (!isNaN(num)) return { temperature: num };
-              // give helpful error for debugging
-              throw new Error('Unparseable response: ' + text.slice(0, 200));
-            }
-          });
+          return res.json();
         })
         .then(data => {
-          console.log('temperature response', data);
-          const currentTemp = data.temperature;
-          document.getElementById('temp').innerText =
-            `Current temperature: ${currentTemp} °C | Setpoint: ${temperatureSetpoint}°C`;
-
-          // Extract PLC source and display it
-          const plcSource = data.plc || 'Unknown';
-          document.getElementById('plc-source').innerText = `PLC Source: ${plcSource}`;
-
-          // Check if current temperature is greater than setpoint
-          const warningElement = document.getElementById('warning');
-          const isAbove = parseFloat(currentTemp) > parseFloat(temperatureSetpoint);
-          if (isAbove) {
-            warningElement.style.display = 'block';
-            // Show map and update appropriate marker
-            showMapIfNeeded();
-            updateMarkers(plcSource, true);
-            // Send alert to backend
-            sendTemperatureAlert(currentTemp, temperatureSetpoint);
-          } else {
-            warningElement.style.display = 'none';
-            updateMarkers(plcSource, false);
-          }
+          console.log('PLC data response', data);
+          
+          // Update PLC1 data
+          updatePLCDisplay('PLC1', data.PLC1);
+          
+          // Update PLC2 data
+          updatePLCDisplay('PLC2', data.PLC2);
         })
         .catch(err => {
-          console.error('fetchTemperature error:', err);
-          document.getElementById('temp').innerText = "Error fetching data.";
+          console.error('fetchPLCData error:', err);
+          document.getElementById('plc1-temp').innerText = "Error fetching PLC1 data.";
+          document.getElementById('plc2-temp').innerText = "Error fetching PLC2 data.";
         });
     }
 
-    function sendTemperatureAlert(currentTemp, setpoint) {
+    function updatePLCDisplay(plc, plcData) {
+      const tempElementId = plc === 'PLC1' ? 'plc1-temp' : 'plc2-temp';
+      const warningElementId = plc === 'PLC1' ? 'plc1-warning' : 'plc2-warning';
+      
+      const tempElement = document.getElementById(tempElementId);
+      const warningElement = document.getElementById(warningElementId);
+      
+      const currentTemp = plcData.temperature;
+      const setpoint = plcData.setpoint;
+      const threshold = plcData.threshold;
+      
+      if (currentTemp !== "Not Available") {
+        tempElement.innerText = `Current temperature: ${currentTemp}°C | Setpoint: ${setpoint}°C | Threshold: ${threshold}°C`;
+        
+        // Check if current temperature is greater than threshold
+        const isAbove = parseFloat(currentTemp) > parseFloat(threshold);
+        if (isAbove) {
+          warningElement.style.display = 'block';
+          // Show map and update appropriate marker
+          showMapIfNeeded();
+          updateMarkers(plc, true);
+          // Send alert to backend
+          sendTemperatureAlert(currentTemp, threshold, plc);
+        } else {
+          warningElement.style.display = 'none';
+          updateMarkers(plc, false);
+        }
+      } else {
+        tempElement.innerText = `${plc} data not available yet`;
+        warningElement.style.display = 'none';
+        updateMarkers(plc, false);
+      }
+    }
+
+    function sendTemperatureAlert(currentTemp, setpoint, plc) {
       fetch("https://temperature-server.onrender.com/temperature/alert", {
         method: "POST",
         headers: {
@@ -98,24 +254,37 @@
           threshold_temperature: setpoint
         })
       })
-        .then(res => res.json())
-        .then(data => {
-          console.log("Alert response:", data);
-        })
-        .catch(err => {
-          console.error("Error sending alert:", err);
-        });
+      .then(res => res.json())
+      .then(data => {
+        console.log(`${plc} alert response:`, data);
+      })
+      .catch(err => {
+        console.error(`Error sending ${plc} alert:`, err);
     }
 
     // Fetch immediately on page load
-    fetchTemperature();
+    fetchPLCData();
 
     // Auto-refresh every 5 seconds
-    setInterval(fetchTemperature, 5000);
+    setInterval(fetchPLCData, 5000);
 
     // Display the stored setpoint on page load and initialize the map (map always visible)
     window.onload = function() {
-      document.getElementById('setpoint').placeholder = `Current setpoint: ${temperatureSetpoint}°C`;
+      // Initialize setpoint inputs with current values from backend
+      fetch("https://temperature-server.onrender.com/threshold")
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('setpoint-plc1').placeholder = `Current PLC1 setpoint: ${data.plc1_setpoint}°C`;
+          document.getElementById('setpoint-plc2').placeholder = `Current PLC2 setpoint: ${data.plc2_setpoint}°C`;
+          document.getElementById('plc1-setpoint').placeholder = `Current setpoint: ${data.plc1_setpoint}°C`;
+          document.getElementById('plc1-threshold').placeholder = `Current threshold: ${data.plc1_threshold}°C`;
+          document.getElementById('plc2-setpoint').placeholder = `Current setpoint: ${data.plc2_setpoint}°C`;
+          document.getElementById('plc2-threshold').placeholder = `Current threshold: ${data.plc2_threshold}°C`;
+        })
+        .catch(err => {
+          console.error('Error fetching thresholds:', err);
+        });
+      
       if (typeof initMap === 'function') initMap();
     };
   </script>
