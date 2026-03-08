@@ -246,14 +246,25 @@
         console.error(`Error sending ${plc} alert:`, err);
       });
 
-    // Fetch immediately on page load
-    fetchPLCData();
-
-    // Auto-refresh every 5 seconds
-    setInterval(fetchPLCData, 5000);
-
     // Display the stored setpoint on page load and initialize the map (map always visible)
     window.onload = function() {
+      // Read temperatures from both PLCs first (from Modbus TCP)
+      Promise.all([
+        fetch("https://temperature-server.onrender.com/read-plc/plc1"),
+        fetch("https://temperature-server.onrender.com/read-plc/plc2")
+      ])
+      .then(responses => Promise.all(responses.map(res => res.json())))
+      .then(data => {
+        console.log('Initial PLC reads completed:', data);
+        // Now fetch and display the data
+        fetchPLCData();
+      })
+      .catch(err => {
+        console.error('Error reading from PLCs:', err);
+        // Still try to fetch whatever data is available
+        fetchPLCData();
+      });
+
       // Initialize setpoint inputs with current values from backend
       fetch("https://temperature-server.onrender.com/threshold")
         .then(res => res.json())
@@ -269,6 +280,22 @@
       
       if (typeof initMap === 'function') initMap();
     };
+
+    // Auto-refresh every 5 seconds (will read and display updated data)
+    setInterval(function() {
+      // Read from PLCs and then fetch display data
+      Promise.all([
+        fetch("https://temperature-server.onrender.com/read-plc/plc1"),
+        fetch("https://temperature-server.onrender.com/read-plc/plc2")
+      ])
+      .then(responses => Promise.all(responses.map(res => res.json())))
+      .then(data => {
+        fetchPLCData();
+      })
+      .catch(err => {
+        fetchPLCData();
+      });
+    }, 5000);
   </script>
 
   <!-- Inlined Canada map -->
