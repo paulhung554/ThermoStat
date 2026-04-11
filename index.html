@@ -137,6 +137,13 @@
         });
     }
 
+    function formatTemperature(rawTemp) {
+      if (rawTemp === undefined || rawTemp === null || rawTemp === "Not Available") return rawTemp;
+      const temperature = parseFloat(rawTemp);
+      if (Number.isNaN(temperature)) return rawTemp;
+      return (temperature / 10).toFixed(1);
+    }
+
     function fetchPLCData() {
       fetch("https://temperature-server.onrender.com/plc-data")
         .then(res => {
@@ -170,7 +177,9 @@
       const setpoint = plcData.setpoint;
       
       if (currentTemp !== "Not Available") {
-        tempElement.innerText = `Current temperature: ${currentTemp}°C | Setpoint: ${setpoint}°C`;
+        const displayedTemp = formatTemperature(currentTemp);
+        const displayedSetpoint = formatTemperature(setpoint);
+        tempElement.innerText = `Current temperature: ${displayedTemp}°C | Setpoint: ${displayedSetpoint}°C`;
         
         // Check if current temperature is greater than setpoint
         const isAbove = parseFloat(currentTemp) > parseFloat(setpoint);
@@ -206,7 +215,7 @@
         if (data.status === "success") {
           // Refresh the display with the newly read data
           fetchPLCData();
-          alert(`${plc} temperature read successfully: ${data.data.temperature}°C`);
+          alert(`${plc} temperature read successfully: ${formatTemperature(data.data.temperature)}°C`);
         } else {
           alert(`Error reading ${plc} temperature: ${data.message}`);
         }
@@ -260,10 +269,10 @@
       fetch("https://temperature-server.onrender.com/threshold")
         .then(res => res.json())
         .then(data => {
-          document.getElementById('setpoint-plc1').placeholder = `Current PLC1 setpoint: ${data.plc1_setpoint}°C`;
-          document.getElementById('setpoint-plc2').placeholder = `Current PLC2 setpoint: ${data.plc2_setpoint}°C`;
-          document.getElementById('plc1-setpoint').placeholder = `Current setpoint: ${data.plc1_setpoint}°C`;
-          document.getElementById('plc2-setpoint').placeholder = `Current setpoint: ${data.plc2_setpoint}°C`;
+          document.getElementById('setpoint-plc1').placeholder = `Current PLC1 setpoint: ${formatTemperature(data.plc1_setpoint)}°C`;
+          document.getElementById('setpoint-plc2').placeholder = `Current PLC2 setpoint: ${formatTemperature(data.plc2_setpoint)}°C`;
+          document.getElementById('plc1-setpoint').placeholder = `Current setpoint: ${formatTemperature(data.plc1_setpoint)}°C`;
+          document.getElementById('plc2-setpoint').placeholder = `Current setpoint: ${formatTemperature(data.plc2_setpoint)}°C`;
         })
         .catch(err => {
           console.error('Error fetching thresholds:', err);
