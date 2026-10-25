@@ -53,6 +53,9 @@
       <input type="number" id="setpoint-plc2" placeholder="Enter PLC2 setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 120px;">
       <button onclick="setPLCSetpoint('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC2</button>
     </div>
+    <div style="margin-top: 15px;">
+      <button onclick="resetSetpoints()" style="padding: 5px 15px; cursor: pointer; background-color: #e63946; color: white; border: none; border-radius: 4px;">Reset Both Setpoints to 0</button>
+    </div>
   </div>
 
   <script>
@@ -134,6 +137,39 @@
         .catch(err => {
           console.error(`Error setting ${plc} setpoint/threshold:`, err);
           alert(`Error setting ${plc} setpoint/threshold`);
+        });
+    }
+
+    function resetSetpoints() {
+      const requests = ['plc1', 'plc2'].flatMap(plcId => [
+        fetch("https://temperature-server.onrender.com/setpoint/" + plcId, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ setpoint: 0 })
+        }),
+        fetch("https://temperature-server.onrender.com/threshold/" + plcId, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ threshold: 0 })
+        })
+      ]);
+
+      Promise.all(requests)
+        .then(responses => Promise.all(responses.map(res => res.json())))
+        .then(dataArray => {
+          console.log('Reset setpoints response:', dataArray);
+          if (dataArray.every(d => d.status === "success")) {
+            alert('PLC1 and PLC2 setpoints reset to 0°C');
+            document.getElementById('setpoint-plc1').value = '';
+            document.getElementById('setpoint-plc2').value = '';
+            fetchPLCData();
+          } else {
+            alert('Error resetting setpoints');
+          }
+        })
+        .catch(err => {
+          console.error('Error resetting setpoints:', err);
+          alert('Error resetting setpoints');
         });
     }
 
