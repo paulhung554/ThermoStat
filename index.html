@@ -19,7 +19,7 @@
     <div style="margin-bottom: 10px;">
       <label for="plc1-setpoint">Setpoint (°C):</label>
       <input type="number" id="plc1-setpoint" placeholder="Enter setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
-      <button onclick="setPLCSetpoint('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
+      <button onclick="setPLCSetpoint('PLC1', 'plc1-setpoint')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
     </div>
     <div style="margin-bottom: 10px;">
       <button onclick="readPLCTemperature('PLC1')" style="padding: 5px 15px; cursor: pointer;">Read Current Temperature</button>
@@ -34,7 +34,7 @@
     <div style="margin-bottom: 10px;">
       <label for="plc2-setpoint">Setpoint (°C):</label>
       <input type="number" id="plc2-setpoint" placeholder="Enter setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 150px;">
-      <button onclick="setPLCSetpoint('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
+      <button onclick="setPLCSetpoint('PLC2', 'plc2-setpoint')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set Setpoint</button>
     </div>
     <p id="plc2-temp">Current: Loading PLC2 data...</p>
     <p id="plc2-warning" style="color: red; font-weight: bold; display: none; margin-top: 10px;">⚠️ WARNING: Current temperature is HIGHER than setpoint!</p>
@@ -46,12 +46,12 @@
     <div style="margin-bottom: 10px;">
       <label for="setpoint-plc1">PLC1 Setpoint (°C):</label>
       <input type="number" id="setpoint-plc1" placeholder="Enter PLC1 setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 120px;">
-      <button onclick="setPLCSetpoint('PLC1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC1</button>
+      <button onclick="setPLCSetpoint('PLC1', 'setpoint-plc1')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC1</button>
     </div>
     <div>
       <label for="setpoint-plc2">PLC2 Setpoint (°C):</label>
       <input type="number" id="setpoint-plc2" placeholder="Enter PLC2 setpoint" step="0.1" style="padding: 5px; margin-left: 10px; width: 120px;">
-      <button onclick="setPLCSetpoint('PLC2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC2</button>
+      <button onclick="setPLCSetpoint('PLC2', 'setpoint-plc2')" style="padding: 5px 15px; margin-left: 10px; cursor: pointer;">Set PLC2</button>
     </div>
     <div style="margin-top: 15px;">
       <button onclick="resetSetpoints()" style="padding: 5px 15px; cursor: pointer; background-color: #e63946; color: white; border: none; border-radius: 4px;">Reset Both Setpoints to 0</button>
@@ -97,8 +97,7 @@
       });
     }
 
-    function setPLCSetpoint(plc) {
-      const inputId = plc === 'PLC1' ? 'plc1-setpoint' : 'plc2-setpoint';
+    function setPLCSetpoint(plc, inputId) {
       const input = document.getElementById(inputId);
       const setpoint = parseFloat(input.value);
       
@@ -128,6 +127,13 @@
           if (dataArray[0].status === "success" && dataArray[1].status === "success") {
             alert(`${plc} setpoint and threshold set to ${setpoint}°C`);
             input.value = '';
+            // Both input fields for this PLC (card + setpoint-controls section) must stay in sync
+            const otherInputId = plc === 'PLC1'
+              ? (inputId === 'plc1-setpoint' ? 'setpoint-plc1' : 'plc1-setpoint')
+              : (inputId === 'plc2-setpoint' ? 'setpoint-plc2' : 'plc2-setpoint');
+            const otherInput = document.getElementById(otherInputId);
+            if (otherInput) otherInput.placeholder = `Current setpoint: ${setpoint}°C`;
+            input.placeholder = `Current setpoint: ${setpoint}°C`;
             // Refresh data to show updated values
             fetchPLCData();
           } else {
